@@ -1,0 +1,13 @@
+includes:
+  - base.yaml
+model:
+  model_name: DGI
+  tau: 0.2
+ood:
+  ood_alg: DGI
+  ood_param: -1.
+train:
+  max_epoch: 500
+  lr: 1e-3
+  mile_stones: [150]
+

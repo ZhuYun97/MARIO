@@ -1,0 +1,22 @@
+includes:
+  - base.yaml
+model:
+  model_name: SWAV
+  encoder_name: GCN_Encoder
+  tau: 0.4
+ood:
+  ood_alg: SWAV
+  ood_param: -1.
+train:
+  max_epoch: 100
+  lr: 1e-2 #1e-2
+  mile_stones: [150]
+  eval_step: 100
+
+  linear_head_epochs: 500
+  linear_head_lr: 1e-3
+aug:
+  mask_feat1: 0.3
+  mask_feat2: 0.4
+  mask_edge1: 0.2
+  mask_edge2: 0.4

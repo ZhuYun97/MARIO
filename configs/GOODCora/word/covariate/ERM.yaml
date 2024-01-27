@@ -1,0 +1,19 @@
+includes:
+  - base.yaml
+model:
+  model_name: ERM
+ood:
+  ood_alg: ERM
+  ood_param: -1.
+train:
+  max_epoch: 100
+  lr: 1e-3 # GCN:1e-2
+  mile_stones: [150]
+# dataset:
+#   inductive: True
+  linear_head_epochs: 500
+  linear_head_lr: 1e-3
+  eval_step: 10
+# dataset:
+#   ood_split_fold: 5
+

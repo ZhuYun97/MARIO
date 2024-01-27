@@ -1,0 +1,13 @@
+includes:
+  - base.yaml
+model:
+  model_name: COSTA
+  tau: 0.2
+ood:
+  ood_alg: COSTA
+  ood_param: -1.
+train:
+  max_epoch: 200
+  lr: 1e-2
+  mile_stones: [150]
+

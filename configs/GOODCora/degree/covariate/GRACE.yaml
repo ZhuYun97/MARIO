@@ -1,0 +1,13 @@
+includes:
+  - base.yaml
+model:
+  model_name: GRACE
+  tau: 0.2
+ood:
+  ood_alg: GRACE
+  ood_param: -1.
+train:
+  max_epoch: 200
+  lr: 1e-2
+  mile_stones: [150]
+

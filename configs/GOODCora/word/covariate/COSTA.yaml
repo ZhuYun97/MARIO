@@ -1,0 +1,22 @@
+includes:
+  - base.yaml
+model:
+  model_name: COSTA
+  encoder_name: GCN_Encoder
+  tau: 0.2
+  use_bn: True
+  last_activation: True
+  dropout_rate: 0
+ood:
+  ood_alg: COSTA
+  ood_param: -1.
+train:
+  max_epoch: 200
+  lr: 1e-2 # GCN: 1e-2
+  mile_stones: [150]
+
+  linear_head_epochs: 500
+  linear_head_lr: 1e-3
+
+# dataset:
+#   inductive: True

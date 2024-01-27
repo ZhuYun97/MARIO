@@ -1,0 +1,19 @@
+includes:
+  - base.yaml
+model:
+  model_name: MVGRL
+  tau: 0.2
+  use_bn: False
+  last_activation: True
+  dropout_rate: 0.0
+ood:
+  ood_alg: EERM
+  ood_param: -1.
+train:
+  max_epoch: 500
+  lr: 1e-3
+  mile_stones: [150]
+
+  linear_head_epochs: 2000
+  linear_head_lr: 1e-3
+  eval_step: 2000

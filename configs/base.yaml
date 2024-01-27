@@ -1,0 +1,65 @@
+task: train
+random_seed: 123
+exp_round: null
+log_file: default
+gpu_idx: 0
+ckpt_root: null
+ckpt_dir: null
+save_tag: null
+pytest: False
+pipeline: GRACE_Pipeline # useless
+num_workers: 1
+train:
+  weight_decay: 0.
+  save_gap: 10
+  tr_ctn: False
+  ctn_epoch: 0
+  epoch: 0
+  alpha: 0.2  # parameter for DANN
+  stage_stones: []
+  linear_head_epochs: 50
+  linear_head_lr: 1e-3
+  mm: 0.99 # momentum update
+  eval_step: 100
+  best_linear_head: False
+  scheduler: multistep
+  save_checkpoint: False
+model:
+  dim_hidden: 300
+  dim_ffn: 300
+  dropout_rate: 0.5
+  use_bn: True
+  last_activation: False
+  tau: 0.4 # temperature used for InfoNCE
+  activation: relu
+  queue_size: 1024 # parameter for MOCO
+  encoder_name: GCN_Encoder
+  load_checkpoint: False
+  # parameters for REGCL
+  num_clusters: 100
+  prototypes_lr: 1e-3
+  prototypes_iters: 10
+  cmi_coefficient: 0.2
+dataset:
+  dataloader_name: BaseDataLoader
+  dataset_root: null
+  generate: False
+  dim_node: null
+  dim_edge: null
+  num_classes: null
+  num_envs: null
+  ood_train_set: False
+  ood_split_fold: 10
+  inductive: False
+ood:
+  extra_param: null
+aug:
+  mask_feat1: 0.2
+  mask_feat2: 0.3
+  mask_edge1: 0.2
+  mask_edge2: 0.3
+  ad_aug: False
+  arcl: False
+  num_views: 2
+evaluation:
+  frozen: True

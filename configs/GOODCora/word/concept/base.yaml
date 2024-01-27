@@ -1,0 +1,7 @@
+includes:
+  - ../base.yaml
+dataset:
+  shift_type: concept
+train:
+  linear_head_epochs: 500
+  linear_head_lr: 1e-3

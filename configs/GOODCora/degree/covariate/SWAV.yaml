@@ -1,0 +1,13 @@
+includes:
+  - base.yaml
+model:
+  model_name: SWAV
+  tau: 0.2
+ood:
+  ood_alg: SWAV
+  ood_param: -1.
+train:
+  max_epoch: 200
+  lr: 1e-4
+  mile_stones: [150]
+

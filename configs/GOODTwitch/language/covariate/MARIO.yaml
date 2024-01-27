@@ -1,0 +1,20 @@
+includes:
+  - base.yaml
+model:
+  model_name: MARIO
+  tau: 0.2
+  num_clusters: 100
+  cmi_coefficient: 0.2
+  prototypes_lr: 1e-3
+  dropout_rate: 0.0
+  use_bn: True
+ood:
+  ood_alg: MARIO
+  ood_param: -1.
+train:
+  max_epoch: 200
+  lr: 1e-1
+  mile_stones: [150]
+  linear_head_epochs: 100
+  linear_head_lr: 1e-1
+

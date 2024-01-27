@@ -1,0 +1,14 @@
+includes:
+  - base.yaml
+model:
+  model_name: GraphMAE
+ood:
+  ood_alg: GraphMAE
+  ood_param: -1.
+train:
+  max_epoch: 200
+  lr: 1e-4
+  mile_stones: [150]
+
+  linear_head_epochs: 200
+  linear_head_lr: 1e-3
