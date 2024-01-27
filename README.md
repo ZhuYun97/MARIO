@@ -1,4 +1,7 @@
 # MARIO: Model Agnostic Recipe for Improving OOD Generalization of Graph Contrastive Learning
-Paper: https://arxiv.org/abs/2307.13055
 
-Code is coming soon.
+**Official implementation of paper**  <br>[MARIO: Model Agnostic Recipe for Improving OOD Generalization of Graph Contrastive Learning](https://arxiv.org/abs/2307.13055) <br>
+
+Yun Zhu, Haizhou Shi, Zhenshuo Zhang, Siliang Tang†
+
+In WWW 2024
