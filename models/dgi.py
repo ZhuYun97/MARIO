@@ -32,7 +32,8 @@ class DGI(DeepGraphInfomax):
         out = self.classifier(out)
         return out
     
-    def pretrain(self, x, edge_index, edge_weight=None):
+    def pretrain(self, **kwargs):
+        x, edge_index, edge_weight = kwargs['x'], kwargs['edge_index'], kwargs['edge_weight']
         pos_z = self.encoder(x, edge_index, edge_weight)
         cor = self.corruption(x, edge_index, edge_weight)
         neg_z = self.encoder(*cor)
@@ -42,3 +43,6 @@ class DGI(DeepGraphInfomax):
     
     def reset_classifier(self):
         self.classifier.reset_parameters()
+        
+    def update_prototypes(self, **kwargs):
+        pass

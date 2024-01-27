@@ -108,7 +108,9 @@ class GraphMAE(nn.Module):
         # out = self.classifier(out, edge_index)
         return out
     
-    def pretrain(self, g, x):
+    def pretrain(self, **kwargs):
+        g = kwargs['data']
+        x = kwargs['x']
         loss = self.mask_attr_prediction(g, x)
         return loss
 
@@ -179,3 +181,6 @@ class GraphMAE(nn.Module):
     @property
     def dec_params(self):
         return chain(*[self.encoder_to_decoder.parameters(), self.decoder.parameters()])
+    
+    def update_prototypes(self, **kwargs):
+        pass

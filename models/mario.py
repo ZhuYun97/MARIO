@@ -82,7 +82,8 @@ class MARIO(torch.nn.Module):
             w = torch.nn.functional.normalize(w, dim=1, p=2)
             self.prototypes.weight.copy_(w)
     
-    def pretrain(self, x1, edge_index1, edge_weight1, x2, edge_index2, edge_weight2):    
+    def pretrain(self, **kwargs):   
+        x1, x2, edge_index1, edge_index2, edge_weight1, edge_weight2 = kwargs['x1'], kwargs['x2'], kwargs['edge_index1'], kwargs['edge_index2'], kwargs['edge_weight1'], kwargs['edge_weight2']
         h1 = self.encoder(x1, edge_index1, edge_weight=edge_weight1)
         h2 = self.encoder(x2, edge_index2, edge_weight=edge_weight2)
         z1 = self.projector(h1)

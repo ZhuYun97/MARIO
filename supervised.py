@@ -87,9 +87,7 @@ if __name__ == '__main__':
             else:
                 loss = preds
             loss = model.loss_postprocess(loss, data, mask, config)
-            # loss = loss * mask.sum() if config.model.model_level == 'node' else loss
-            # loss = loss.mean() / mask.sum()
-            # loss = loss.sum() / mask.sum()
+
             loss.backward()
             optimizer.step()
             epoch_loss += loss.detach().item() * mask.sum().item()
@@ -121,6 +119,3 @@ if __name__ == '__main__':
         
     print(f"\nFinal results: id-id: {best_id_id_test:.4f}, id-ood: {best_id_ood_test:.4f}, ood-ood: {best_ood_ood_test:.4f}")
     write_res_in_log([best_id_id_test, best_id_ood_test, best_ood_ood_test], config) # write results in /storage/log 
-    
-    tmp = torch.tensor([train_list, id_val_list, id_test_list, ood_val_list, ood_test_list])
-    torch.save(tmp, f="./sup_result")

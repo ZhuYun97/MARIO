@@ -16,5 +16,6 @@ from .mario import MARIO
 from .costa import COSTA
 from .graphmae import GraphMAE
 from .mvgrl import MVGRL
+from .gbt import GBT
 
 from .model_manager import load_model, load_sup_model

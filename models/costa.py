@@ -33,7 +33,8 @@ class COSTA(torch.nn.Module):
         # out = self.classifier(out, edge_index)
         return out
     
-    def pretrain(self, x1, edge_index1, edge_weight1, x2, edge_index2, edge_weight2):
+    def pretrain(self, **kwargs):
+        x1, x2, edge_index1, edge_index2, edge_weight1, edge_weight2 = kwargs['x1'], kwargs['x2'], kwargs['edge_index1'], kwargs['edge_index2'], kwargs['edge_weight1'], kwargs['edge_weight2']
         h1 = self.encoder(x1, edge_index1, edge_weight=edge_weight1)
         h2 = self.encoder(x2, edge_index2, edge_weight=edge_weight2)
         
@@ -66,6 +67,9 @@ class COSTA(torch.nn.Module):
         z1 = F.normalize(z1)
         z2 = F.normalize(z2)
         return torch.mm(z1, z2.t())
+    
+    def update_prototypes(self, **kwargs):
+        pass
 
 
             

@@ -58,8 +58,12 @@ class VGAE(GAE):
         out = self.classifier(out)
         return out
     
-    def pretrain(self, x, edge_index, edge_weight=None):
+    def pretrain(self, **kwargs):
+        x, edge_index, edge_weight = kwargs['x'], kwargs['edge_index'], kwargs['edge_weight']
         z = self.encode(x, edge_index, edge_weight=edge_weight)
         loss = self.recon_loss(z, edge_index) # use all existing edges as training samples 
         loss += self.kl_loss() * (1/x.shape[0])
         return loss
+    
+    def update_prototypes(self, **kwargs):
+        pass

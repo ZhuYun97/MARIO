@@ -8,6 +8,9 @@ In WWW 2024
 
 Our codes are built up on [GOOD](https://github.com/divelab/GOOD).
 
+## Overview
+![](imgs/mario.png)
+
 ## Setup
 
 ```
@@ -31,6 +34,10 @@ You can use this command to run GCN on GOODArxiv dataset under supervised settin
 ### Unsupervised Training
 
 ```
+# baselines
+python unsupervised.py --config_path GOODCBAS/color/concept/DGI.yaml
+
+# Ours
 python unsupervised.py --config_path GOODCBAS/color/concept/MARIO.yaml --ad_aug
 
 python unsupervised.py --config_path GOODWebKB/university/concept/MARIO.yaml --ad_aug
@@ -44,14 +51,12 @@ python unsupervised.py --config_path GOODWebKB/university/concept/MARIO.yaml --a
 
 These options are available now.
 ```
-dataset: GOODCora, GOODArxiv
-domain: according to the selected dataset(GOODCora: word or degree, GOODArxiv: degree ot time)
+dataset: GOODCora, GOODTwitch, GOODCBAS, GOODWebKB
+domain: according to the selected dataset(GOODCora: word or degree, GOODTwitch: language)
 shift_type: covariate, concept, no_shift
-method: ERM, GAE, VGAE, MGAE, DGI, GRACE, BGRL
+method: ERM, EERM, IRM, GAE, VGAE, GraphMAE, DGI, MVGRL, GRACE, BGRL, COSTA, MARIO
 ```
 
 ### Hyperparameters
 
 In the corresponding config yaml file (e.g., `GOODCora/word/covariate/GRACE.yaml`), you can assign training epochs (i.e., max_epoch) and learning rate (i.e., lr). And, for some methods, you can specify some additional hyperparametes (e.g., the strength of augmentation in GRACE and BGRL, temperature `tau` in GRACE, momentum `mm`  and `warmup steps` in BGRL and etc). 
-
-You can assign a large number to `eval_step` (L93 which specify the interval epoch of evaluation e.g, 1  means that we evaluate pre-trained model in each epoch) to save quantity of time.

@@ -18,38 +18,6 @@ import numpy as np
 from rich.progress import track
 
 
-def train_best_linear_head(model, config, ood_train=False):
-    model.reset_classifier()
-    classifier_optimizer = torch.optim.Adam(model.classifier.parameters(), lr=config.train.linear_head_lr)
-    best_id_val, best_id_test, best_ood_val, best_ood_test = 0, 0, 0, 0
-    for e in track(range(config.train.linear_head_epochs)):
-        for data in loader['train']:
-            model.classifier.train()
-            data = data.to(device)
-            node_norm = data.get('node_norm') if config.model.model_level == 'node' else None
-            node_norm = torch.ones(data.x.shape[0], device=data.x.device) if node_norm == None else node_norm
-            edge_weight = data.get('edge_norm') if config.model.model_level == 'node' else None
-
-            mask, targets = nan2zero_get_mask(data, 'train', config)
-            preds = model(data.x, data.edge_index, edge_weight=None, frozen=True)
-
-            loss = criterion(preds, targets) * mask
-            loss = loss * node_norm * mask.sum() if config.model.model_level == 'node' else loss # normalization
-            loss = loss.mean() / mask.sum()
-            # loss = loss.sum() / mask.sum()
-            loss.backward()
-            classifier_optimizer.step()
-            classifier_optimizer.zero_grad()
-        # early stop
-        train_acc, id_val, id_test, ood_val, ood_test = evaluate_all_with_scores(model, loader, criterion, config, device)
-        if id_val > best_id_val:
-            best_id_val = id_val
-            best_id_test = id_test
-        if ood_val > best_ood_val:
-            best_ood_val = ood_val
-            best_ood_test = ood_test
-    return train_acc, best_id_val, best_id_test, best_ood_val, best_ood_test 
-
 def train_linear_head(model, config, ood_train=False):
     model.reset_classifier()
     classifier_optimizer = torch.optim.Adam(model.classifier.parameters(), lr=config.train.linear_head_lr)
@@ -74,46 +42,34 @@ def train_linear_head(model, config, ood_train=False):
             
 def pretrain(data, model, config):
     model.train()
-    
-    # multi-views
-    if config.model.model_name in ['GRACE', 'BGRL', 'G2CL', 'MOCO', 'PGCL', 'UNPMLP'
-                                   , 'SWAV', 'MARIO', 'PROJ_GRACE', 'COSTA']:
-        
-        # node_norm = data.get('node_norm').to(device) if data.get('node_norm') != None else torch.ones(data.x.shape[0])
+    # node_norm = data.get('node_norm').to(device) if data.get('node_norm') != None else torch.ones(data.x.shape[0])
 
-        # data augmentation, drop features and drop edges used in this repo
-        x1, x2 = drop_feature(data.x, config.aug.mask_feat1), drop_feature(data.x, config.aug.mask_feat2)
-        edge_index1, edge_norm1 = dropout_adj(edge_index=data.edge_index, p=config.aug.mask_edge1)
-        edge_index2, edge_norm2 = dropout_adj(edge_index=data.edge_index, p=config.aug.mask_edge2)
-        x1, edge_index1, x2, edge_index2 = x1.to(device), edge_index1.to(device), x2.to(device), edge_index2.to(device)
+    # data augmentation, drop features and drop edges used in this repo
+    x1, x2 = drop_feature(data.x, config.aug.mask_feat1), drop_feature(data.x, config.aug.mask_feat2)
+    edge_index1, edge_norm1 = dropout_adj(edge_index=data.edge_index, p=config.aug.mask_edge1)
+    edge_index2, edge_norm2 = dropout_adj(edge_index=data.edge_index, p=config.aug.mask_edge2)
+    x1, edge_index1, x2, edge_index2 = x1.to(device), edge_index1.to(device), x2.to(device), edge_index2.to(device)
+    # original data
+    data = data.to(device)
+    x, edge_index, edge_weight = data.x, data.edge_index, None
 
-        # adversarial augmentation
-        if config.aug.ad_aug:
-            model.update_prototypes(x1=x1, edge_index1=edge_index1, edge_weight1=None, x2=x2, edge_index2=edge_index2, edge_weight2=None)
-                
-            def node_attack(perturb):
-                x1_noise = x1 + perturb
-                return model.pretrain(x1=x1_noise, edge_index1=edge_index1, edge_weight1=None, x2=x2, edge_index2=edge_index2, edge_weight2=None)
-
-            loss = adversarial_aug_train(model, node_attack, x1.shape, 1e-3, 3, device)
-        else:
-            model.update_prototypes(x1=x1, edge_index1=edge_index1, edge_weight1=None, x2=x2, edge_index2=edge_index2, edge_weight2=None)
-            loss = model.pretrain(x1=x1, edge_index1=edge_index1, edge_weight1=None, x2=x2, edge_index2=edge_index2, edge_weight2=None)
-            
-    # only one view
-    elif config.model.model_name in ['GAE', 'VGAE', 'DGI', 'GraphMAE', "MVGRL"]:
-        if config.aug.ad_aug:
+    # adversarial augmentation
+    if config.aug.ad_aug:
+        if config.model.model_name in ['GAE', 'VGAE', 'DGI', 'GraphMAE', "MVGRL"]:
             raise NotImplementedError(f'{config.model.model_name} can not use adversarial augmentation now!')
-        # x, edge_index, edge_weight = data.x.to(device), data.edge_index.to(device), data.edge_norm.to(device)
-        x, edge_index = data.x.to(device), data.edge_index.to(device)
-        if config.model.model_name == 'GraphMAE':
-            loss = model.pretrain(data.to(device), x)
-        elif config.model.model_name == 'MVGRL':
-            loss = model.pretrain(data.to(device), x, edge_index)
-        else:
-            loss = model.pretrain(x, edge_index)
+        model.update_prototypes(x1=x1, edge_index1=edge_index1, edge_weight1=None, x2=x2, edge_index2=edge_index2, edge_weight2=None)
+            
+        def node_attack(perturb):
+            x1_noise = x1 + perturb
+            return model.pretrain(x1=x1_noise, edge_index1=edge_index1, edge_weight1=None, x2=x2, edge_index2=edge_index2, edge_weight2=None)
+
+        loss = adversarial_aug_train(model, node_attack, x1.shape, 1e-3, 3, device)
     else:
-        raise NotImplementedError(f'{config.model.model_name} is not implemented!')
+        model.update_prototypes(x1=x1, edge_index1=edge_index1, edge_weight1=None, x2=x2, edge_index2=edge_index2, edge_weight2=None)
+    
+        loss = model.pretrain(data=data.to(device), x=x, edge_index=edge_index, edge_weight=edge_weight,
+                                x1=x1, edge_index1=edge_index1, edge_weight1=None, x2=x2, edge_index2=edge_index2, edge_weight2=None)
+
     return loss
 
 
@@ -183,8 +139,6 @@ if __name__ == '__main__':
             
             optimizer.zero_grad()
             loss = pretrain(data, model, config)
-            # if config.aug.ad_aug:
-            #     optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             # update target network
@@ -199,23 +153,11 @@ if __name__ == '__main__':
         if e % config.train.eval_step == 0:
             if e == config.train.max_epoch:
                 break # we will evaluate model out of the loop
-            # ID linear head if ood_train is True else OOD linear head
-            if config.dataset.ood_train_set:
-                train_acc, ood_val , ood_test = train_eval_ood_linear_head(model, config, k=config.dataset.ood_split_fold)
-                id_val, id_test = ood_val, 0
-            else:
-                if config.train.best_linear_head:
-                    train_acc, id_val, id_test, ood_val, ood_test = train_best_linear_head(model, config)
-                    # print(f"Epoch {e}, ID test: {id_test:.4f}, OOD test: {ood_test:.4f}")
-                else:
-                    train_linear_head(model, config)
-                    # eval
-                    train_acc, id_val, id_test, ood_val, ood_test = evaluate_all_with_scores(model, loader, criterion, config, device)
-                    train_list.append(train_acc)
-                    id_val_list.append(id_val)
-                    id_test_list.append(id_test)
-                    ood_val_list.append(ood_val)
-                    ood_test_list.append(ood_test)
+
+            train_linear_head(model, config)
+            # eval
+            train_acc, id_val, id_test, ood_val, ood_test = evaluate_all_with_scores(model, loader, criterion, config, device)
+            train_list.append(train_acc), id_val_list.append(id_val), id_test_list.append(id_test), ood_val_list.append(ood_val), ood_test_list.append(ood_test)
             
             # id val
             if id_val > best_id_val:
@@ -225,31 +167,17 @@ if __name__ == '__main__':
                 best_ood_val, best_ood_ood_test = ood_val, ood_test
         
         # print(f'train acc: {train_acc} , id test: {id_test} ood test: {ood_test}')
-        # ebar.set_postfix({'Train Loss': epoch_loss/epoch_node_cnt, 'train acc': train_acc,
-        #                     'id val': id_val, 'id test': id_test,
-        #                     'ood val': ood_val, 'ood test': ood_test})
-        ebar.set_postfix({'train acc': train_acc,
-                            'id test': id_test,
-                            'ood test': ood_test})
+        ebar.set_postfix({'Train Loss': epoch_loss/epoch_node_cnt, 'train acc': train_acc,
+                            'id val': id_val, 'id test': id_test,
+                            'ood val': ood_val, 'ood test': ood_test})
         accs = [train_acc, id_val, id_test, ood_val, ood_test]
         write_all_in_pic(current_time, config, accs, e) # the information of tensorboard is recorded in /storage/tensorboard 
     ##############################################################################
     # evaluate out of the loop
-    if config.dataset.ood_train_set:
-        train_acc, ood_val , ood_test = train_eval_ood_linear_head(model, config, k=config.dataset.ood_split_fold)
-        id_val, id_test = ood_val, 0
-    else:
-        if config.train.best_linear_head:
-            train_acc, id_val, id_test, ood_val, ood_test = train_best_linear_head(model, config)
-        else:
-            train_linear_head(model, config)
-            # eval
-            train_acc, id_val, id_test, ood_val, ood_test = evaluate_all_with_scores(model, loader, criterion, config, device)
-            train_list.append(train_acc)
-            id_val_list.append(id_val)
-            id_test_list.append(id_test)
-            ood_val_list.append(ood_val)
-            ood_test_list.append(ood_test)
+    train_linear_head(model, config)
+    # eval
+    train_acc, id_val, id_test, ood_val, ood_test = evaluate_all_with_scores(model, loader, criterion, config, device)
+    train_list.append(train_acc), id_val_list.append(id_val), id_test_list.append(id_test), ood_val_list.append(ood_val), ood_test_list.append(ood_test)
     # id val
     if id_val > best_id_val:
         best_id_val, best_id_id_test, best_id_ood_test = id_val, id_test, ood_test
@@ -262,6 +190,3 @@ if __name__ == '__main__':
         save_ckpts(model, config)
     print(f"\nFinal results: id-id: {best_id_id_test:.4f}, id-ood: {best_id_ood_test:.4f}, ood-ood: {best_ood_ood_test:.4f}")
     write_res_in_log([best_id_id_test, best_id_ood_test, best_ood_ood_test], config) # write results in /storage/log 
-    
-    tmp = torch.tensor([train_list, id_val_list, id_test_list, ood_val_list, ood_test_list])
-    torch.save(tmp, f=f"./storage/records/result-{args.config_path.split('/')[5:]}-{config.random_seed}")

@@ -31,8 +31,3 @@ class GCN(torch.nn.Module):
         torch.nn.init.xavier_uniform_(self.classifier.weight.data)
         torch.nn.init.constant_(self.classifier.bias.data, 0)
         
-        
-# class GCN_Classifier(torch.nn.Module):
-#     def __init__(self, hidden, num_classes):
-#         super(GCN_Classifier, self).__init__()
-#         self.classifier = GCNConv(hidden, num_classes)

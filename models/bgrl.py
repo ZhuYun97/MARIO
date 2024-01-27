@@ -53,7 +53,8 @@ class BGRL(torch.nn.Module):
         for param_q, param_k in zip(self.online_encoder.parameters(), self.target_encoder.parameters()):
             param_k.data.mul_(mm).add_(param_q.data, alpha=1. - mm)
 
-    def pretrain(self, x1, edge_index1, edge_weight1, x2, edge_index2, edge_weight2):
+    def pretrain(self, **kwargs):
+        x1, x2, edge_index1, edge_index2, edge_weight1, edge_weight2 = kwargs['x1'], kwargs['x2'], kwargs['edge_index1'], kwargs['edge_index2'], kwargs['edge_weight1'], kwargs['edge_weight2']
         # forward online network
         online_y1 = self.online_encoder(x1, edge_index1, edge_weight1)
 
@@ -86,6 +87,9 @@ class BGRL(torch.nn.Module):
             out = self.online_encoder(x, edge_index, edge_weight)
         out = self.classifier(out)
         return out
+    
+    def update_prototypes(self, **kwargs):
+        pass
 
 
 def load_trained_encoder(encoder, ckpt_path, device):

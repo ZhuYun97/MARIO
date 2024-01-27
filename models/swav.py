@@ -52,7 +52,8 @@ class SWAV(torch.nn.Module):
         # out = self.classifier(out, edge_index)
         return out
     
-    def pretrain(self, x1, edge_index1, edge_weight1, x2, edge_index2, edge_weight2):
+    def pretrain(self, **kwargs):
+        x1, x2, edge_index1, edge_index2, edge_weight1, edge_weight2 = kwargs['x1'], kwargs['x2'], kwargs['edge_index1'], kwargs['edge_index2'], kwargs['edge_weight1'], kwargs['edge_weight2']
         h1 = self.encoder(x1, edge_index1, edge_weight=edge_weight1)
         h2 = self.encoder(x2, edge_index2, edge_weight=edge_weight2)
         z1 = self.projector(h1)
@@ -146,14 +147,6 @@ class SWAV(torch.nn.Module):
             # u, r, c = zeros(K), ones(K) / K, ones(B) / B
             r = torch.ones(size=(1, N, 1), device=cost_matrix.device) / N
             c = torch.ones(size=(1, K, 1), device=cost_matrix.device) / K
-            # r = torch.bmm(out1, avg_out2.transpose(1,2)) # (B,N,1), normalize? otherwise the accumulated pd does not equal to one
-            # r[r<=0] = 1e-8 # max(ri, 0)
-            # r = r / r.sum(dim=1, keepdim=True) # the accumulated pd equals to one, or we can use softmax
-            # # r = (torch.ones_like(r)/r.shape[1]) # uniform marginal weights
-            # c = torch.bmm(out2, avg_out1.transpose(1,2)) # (B,M,1), normalize?
-            # c[c<=0] = 1e-8 # max(ci, 0)
-            # c = c / c.sum(dim=1, keepdim=True)
-            # # c = (torch.ones_like(c)/c.shape[1]) # uniform
             P = torch.exp(-1*lamb*cost_matrix) # (B,N,K)
             u = (torch.ones_like(c)/c.shape[1]) # (B,M,1)
             for i in range(iter_times):
@@ -168,4 +161,7 @@ class SWAV(torch.nn.Module):
         # S = torch.mul(transport_matrix, 1-cost_matrix).sum(dim=1).sum(dim=1, keepdim=True) #
         # loss_emd = 2-2*S # maybe mean function should not be used here
         return transport_matrix
+    
+    def update_prototypes(self, **kwargs):
+        pass
     

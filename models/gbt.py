@@ -1,19 +1,19 @@
-from models.encoder import GCN_Encoder, PMLP_GCN, GAT_Encoder
-from models.mlp import Two_MLP_BN
+from models.encoder import GCN_Encoder
 import torch
-import torch.nn.functional as F
+from torch_geometric.nn import GCNConv
 from easyGOOD.utils.register import register
+from models.mlp import Two_MLP_BN, Two_MLP
+import torch.nn.functional as F
 
 
 @register.model_register
-class GRACE(torch.nn.Module):
+class GBT(torch.nn.Module):
     def __init__(self, input_dim, layer_num=2, hidden=128, output_dim=70, activation="relu", dropout=0.5, use_bn=True, last_activation=False, **args_dicts) -> None:
         super().__init__()
         
         self.encoder = register.encoders[args_dicts['encoder_name']](input_dim, layer_num, hidden, activation, dropout, use_bn, last_activation)
         self.projector =Two_MLP_BN(hidden, hidden, hidden)
         self.classifier = torch.nn.Linear(hidden, output_dim)
-        # self.classifier = GCNConv(hidden, output_dim)
         assert args_dicts['tau'] > 0
         self.tau = args_dicts['tau']
         
@@ -24,11 +24,10 @@ class GRACE(torch.nn.Module):
         if frozen:
             with torch.no_grad():
                 self.encoder.eval()
-                out = self.encoder(x, edge_index, edge_weight)
+                out = self.encoder(x, edge_index, edge_weight=edge_weight)
         else:
-            out = self.encoder(x, edge_index, edge_weight)
+            out = self.encoder(x, edge_index, edge_weight=edge_weight)
         out = self.classifier(out)
-        # out = self.classifier(out, edge_index)
         return out
     
     def pretrain(self, **kwargs):
@@ -38,35 +37,28 @@ class GRACE(torch.nn.Module):
         z1 = self.projector(h1)
         z2 = self.projector(h2)
 
-        l1 = self.semi_loss(z1, z2)
-        l2 = self.semi_loss(z2, z1)
-        ret = (l1 + l2) * 0.5
-        return ret.mean()
-        # return ret
+        loss = self.bt_loss(z1, z2, None)
+        return loss
     
-    def pretrain_arcl(self, x_list, edge_index_list, edge_weight_list):
-        f = lambda x: torch.exp(x / self.tau)
-        num_views = len(x_list)
-        z_list = []
-        for i in range(num_views):
-            z_i = self.projector(self.encoder(x_list[i], edge_index_list[i], edge_weight_list[i]))
-            z_list.append(z_i)
-        
-        worst_sim = torch.ones(x_list[0].shape[0], device=x_list[0].device) # (node_num, 1)
-        for i in range(num_views):
-            for j in range(i, num_views):
-                sim_ij = torch.cosine_similarity(z_list[i], z_list[j])   
-                worst_sim[sim_ij < worst_sim] = sim_ij[sim_ij < worst_sim] # update
-        # print(worst_sim)
-        # print(torch.isnan(worst_sim).sum())
-        worst_sim = f(worst_sim)
-        
-        refl_sim = f(self.sim(z_list[0], z_list[0]))
-        between_sim = f(self.sim(z_list[0], z_list[1]))
-        return -torch.log(
-            worst_sim
-            /(refl_sim.sum(1) + between_sim.sum(1) - refl_sim.diag())).mean()
-        
+    def bt_loss(self, h1: torch.Tensor, h2: torch.Tensor, lambda_, batch_norm=True, eps=1e-15, *args, **kwargs):
+        batch_size = h1.size(0)
+        feature_dim = h1.size(1)
+
+        if lambda_ is None:
+            lambda_ = 1. / feature_dim
+
+        if batch_norm:
+            z1_norm = (h1 - h1.mean(dim=0)) / (h1.std(dim=0) + eps)
+            z2_norm = (h2 - h2.mean(dim=0)) / (h2.std(dim=0) + eps)
+            c = (z1_norm.T @ z2_norm) / batch_size
+        else:
+            c = h1.T @ h2 / batch_size
+
+        off_diagonal_mask = ~torch.eye(feature_dim).bool()
+        loss = (1 - c.diagonal()).pow(2).sum()
+        loss += lambda_ * c[off_diagonal_mask].pow(2).sum()
+
+        return loss    
         
         
     def sim(self, z1: torch.Tensor, z2: torch.Tensor):

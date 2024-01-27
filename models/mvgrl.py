@@ -109,7 +109,8 @@ class MVGRL(torch.nn.Module):
         # out = self.classifier(out, edge_index)
         return out
     
-    def pretrain(self, data, x, edge_index, edge_weight=None):
+    def pretrain(self, **kwargs):
+        data, x, edge_index, edge_weight = kwargs['data'], kwargs['x'], kwargs['edge_index'], kwargs['edge_weight']
         # view1: original graph
         h1 = self.encoder(x, edge_index, edge_weight=edge_weight)
         c1 = self.read(h1)
@@ -141,6 +142,9 @@ class MVGRL(torch.nn.Module):
         lbl = torch.cat((lbl_1, lbl_2), 0)
         ret = self.b_xent(logits, lbl)
         return ret.mean()
+    
+    def update_prototypes(self, **kwargs):
+        pass
  
     
 # Borrowed from https://github.com/PetarV-/DGI
