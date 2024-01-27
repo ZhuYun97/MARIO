@@ -1,0 +1,16 @@
+includes:
+  - base.yaml
+model:
+  model_name: BGRL
+ood:
+  ood_alg: BGRL
+  ood_param: -1.
+train:
+  max_epoch: 600
+  lr: 1e-3
+  mile_stones: [150]
+  warmup_steps: 50 
+  mm: 0.99 # momentum update
+  linear_head_epochs: 100
+  linear_head_lr: 1e-1
+

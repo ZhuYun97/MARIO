@@ -7,7 +7,7 @@ ckpt_root: null
 ckpt_dir: null
 save_tag: null
 pytest: False
-pipeline: GRACE_Pipeline # useless
+pipeline: GRACE_Pipeline # useless for current version
 num_workers: 1
 train:
   weight_decay: 0.

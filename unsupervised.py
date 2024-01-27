@@ -29,13 +29,8 @@ def train_best_linear_head(model, config, ood_train=False):
             node_norm = data.get('node_norm') if config.model.model_level == 'node' else None
             node_norm = torch.ones(data.x.shape[0], device=data.x.device) if node_norm == None else node_norm
             edge_weight = data.get('edge_norm') if config.model.model_level == 'node' else None
-            if ood_train:
-                assert config.dataset.ood_train_set
-                mask, targets = nan2zero_get_mask(data, 'ood_train', config) # select 10% from OOD test set as training set for OOD linear head
-            else:
-                mask, targets = nan2zero_get_mask(data, 'train', config)
-            # preds = model(data=data, edge_weight=edge_weight)
-            # preds = model(data.x, data.edge_index, edge_weight=edge_weight, frozen=True) # use this
+
+            mask, targets = nan2zero_get_mask(data, 'train', config)
             preds = model(data.x, data.edge_index, edge_weight=None, frozen=True)
 
             loss = criterion(preds, targets) * mask
@@ -65,64 +60,17 @@ def train_linear_head(model, config, ood_train=False):
             node_norm = data.get('node_norm') if config.model.model_level == 'node' else None
             node_norm = torch.ones(data.x.shape[0], device=data.x.device) if node_norm == None else node_norm
             edge_weight = data.get('edge_norm') if config.model.model_level == 'node' else None
-            if ood_train:
-                assert config.dataset.ood_train_set
-                mask, targets = nan2zero_get_mask(data, 'ood_train', config) # select 10% from OOD test set as training set for OOD linear head
-            else:
-                mask, targets = nan2zero_get_mask(data, 'train', config)
-            # preds = model(data=data, edge_weight=edge_weight)
-            # preds = model(data.x, data.edge_index, edge_weight=edge_weight, frozen=True) # use this
-            preds = model(data.x, data.edge_index, edge_weight=None, frozen=True)
+            # training mask
+            mask, targets = nan2zero_get_mask(data, 'train', config)
+            preds = model(data.x, data.edge_index, edge_weight=None, frozen=True) # you can also assign edge_weight
 
             loss = criterion(preds, targets) * mask
             loss = loss * node_norm * mask.sum() if config.model.model_level == 'node' else loss # normalization
             loss = loss.mean() / mask.sum()
-            # loss = loss.sum() / mask.sum()
-            loss.backward()
-            classifier_optimizer.step()
-            classifier_optimizer.zero_grad()
-        # early stop
-            
-
-# use 10-fold cross-validation
-def train_eval_ood_linear_head(model, config, k=10):
-    data = dataset[0]
-    train_indices, val_indices, test_indices = k_fold(data, k)
-    data = data.to(device)
-    
-    train_acc_list, val_acc_list, test_acc_list = [], [], []
-    train_acc, val_acc, test_acc = 0, 0, 0
-    for i in range(k):
-        # train_loader = xx
-        # for data in train_loader:
-        #     data = data.to(device)
-        model.reset_classifier()
-        classifier_optimizer = torch.optim.Adam(model.classifier.parameters(), lr=config.train.linear_head_lr)
-        
-        best_val, best_test_from_val = 0, 0
-        for e in range(config.train.linear_head_epochs):
-            preds = model(data.x, data.edge_index, frozen=True)
-            loss = criterion(preds[train_indices[i]], data.y[train_indices[i]]).mean()
-            
             loss.backward()
             classifier_optimizer.step()
             classifier_optimizer.zero_grad()
             
-            preds = torch.argmax(preds, dim=1)
-            train_acc = torch.sum(preds[train_indices[i]] == data.y[train_indices[i]]) / train_indices[i].sum()
-            val_acc = torch.sum(preds[val_indices[i]] == data.y[val_indices[i]]) / val_indices[i].sum()
-            test_acc = torch.sum(preds[test_indices[i]] == data.y[test_indices[i]]) / test_indices[i].sum()
-            
-            if val_acc > best_val:
-                best_test_from_val = test_acc
-                best_val = val_acc
-        train_acc_list.append(train_acc.cpu())
-        val_acc_list.append(best_val.cpu())
-        test_acc_list.append(best_test_from_val.cpu())
-    return np.mean(train_acc_list), np.mean(val_acc_list), np.mean(test_acc_list)
-        
-        
-        
             
 def pretrain(data, model, config):
     model.train()
@@ -130,59 +78,27 @@ def pretrain(data, model, config):
     # multi-views
     if config.model.model_name in ['GRACE', 'BGRL', 'G2CL', 'MOCO', 'PGCL', 'UNPMLP'
                                    , 'SWAV', 'MARIO', 'PROJ_GRACE', 'COSTA']:
-        # augmentation
-        node_norm = data.get('node_norm').to(device) if data.get('node_norm') != None else torch.ones(data.x.shape[0])
+        
+        # node_norm = data.get('node_norm').to(device) if data.get('node_norm') != None else torch.ones(data.x.shape[0])
 
+        # data augmentation, drop features and drop edges used in this repo
         x1, x2 = drop_feature(data.x, config.aug.mask_feat1), drop_feature(data.x, config.aug.mask_feat2)
-        if hasattr(data, 'edge_norm'):
-            edge_index1, edge_norm1 = dropout_adj(edge_index=data.edge_index, edge_attr=data.edge_norm, p=config.aug.mask_edge1)
-            edge_index2, edge_norm2 = dropout_adj(edge_index=data.edge_index, edge_attr=data.edge_norm, p=config.aug.mask_edge2)
-            edge_norm1 = edge_norm1.to(device)
-            edge_norm2 = edge_norm2.to(device)
-        else:
-            edge_index1, edge_norm1 = dropout_adj(edge_index=data.edge_index, p=config.aug.mask_edge1)
-            edge_index2, edge_norm2 = dropout_adj(edge_index=data.edge_index, p=config.aug.mask_edge2)
+        edge_index1, edge_norm1 = dropout_adj(edge_index=data.edge_index, p=config.aug.mask_edge1)
+        edge_index2, edge_norm2 = dropout_adj(edge_index=data.edge_index, p=config.aug.mask_edge2)
         x1, edge_index1, x2, edge_index2 = x1.to(device), edge_index1.to(device), x2.to(device), edge_index2.to(device)
-        if config.aug.arcl:
-            x_list = [x1, x2]
-            edge_index_list = [edge_index1, edge_index2]
-            edge_norm_list = [edge_norm1, edge_norm2]
-            for i in range(config.aug.num_views-2):
-                x_list.append(drop_feature(data.x, config.aug.mask_feat1).to(device))
-                edge_index_tmp, edge_norm_tmp = dropout_adj(edge_index=data.edge_index, edge_attr=data.edge_norm, p=config.aug.mask_edge1)
-                edge_index_list.append(edge_index_tmp.to(device))
-                edge_norm_list.append(edge_norm_tmp.to(device))
-            loss = model.pretrain_arcl(x_list, edge_index_list, edge_norm_list)
-            
-        elif config.aug.ad_aug:
-            if config.model.model_name == 'MARIO':
-                model.update_prototypes(x1=x1, edge_index1=edge_index1, edge_weight1=None, x2=x2, edge_index2=edge_index2, edge_weight2=None)
-            # def ad_update_prototypes(perturb):
-            #     x1_noise = x1 + perturb
-            #     return model.update_prototypes(x1=x1_noise, edge_index1=edge_index1, edge_weight1=None, x2=x2, edge_index2=edge_index2, edge_weight2=None)
-            
+
+        # adversarial augmentation
+        if config.aug.ad_aug:
+            model.update_prototypes(x1=x1, edge_index1=edge_index1, edge_weight1=None, x2=x2, edge_index2=edge_index2, edge_weight2=None)
+                
             def node_attack(perturb):
                 x1_noise = x1 + perturb
                 return model.pretrain(x1=x1_noise, edge_index1=edge_index1, edge_weight1=None, x2=x2, edge_index2=edge_index2, edge_weight2=None)
-            # loss = adversarial_aug_train(model, node_attack, ad_update_prototypes, x1.shape, 1e-3, 3, device)
+
             loss = adversarial_aug_train(model, node_attack, x1.shape, 1e-3, 3, device)
-        # elif config.aug.ad_aug:
-        #     def node_attack(perturb):
-        #         num = x1.shape[0]
-        #         x1_noise = x1 + perturb[:num]
-        #         x2_noise = x2 + perturb[num:]
-        #         return model.pretrain(x1=x1_noise, edge_index1=edge_index1, edge_weight1=None, x2=x2_noise, edge_index2=edge_index2, edge_weight2=None)
-        #     loss = adversarial_aug_train(model, node_attack, (x1.shape[0]*2, x1.shape[1]), 1e-3, 3, device)
         else:
-            # loss = model.pretrain(x1=x1, edge_index1=edge_index1, edge_weight1=edge_norm1, x2=x2, edge_index2=edge_index2, edge_weight2=edge_norm2) # use this
-            if config.model.model_name == 'MARIO':    
-                model.update_prototypes(x1=x1, edge_index1=edge_index1, edge_weight1=None, x2=x2, edge_index2=edge_index2, edge_weight2=None)
+            model.update_prototypes(x1=x1, edge_index1=edge_index1, edge_weight1=None, x2=x2, edge_index2=edge_index2, edge_weight2=None)
             loss = model.pretrain(x1=x1, edge_index1=edge_index1, edge_weight1=None, x2=x2, edge_index2=edge_index2, edge_weight2=None)
-            # print(data)
-            # only use train set
-            # mask, targets = nan2zero_get_mask(data, 'train', config)
-            # loss = loss * mask.to(device)
-            # loss = loss.sum() / mask.sum()
             
     # only one view
     elif config.model.model_name in ['GAE', 'VGAE', 'DGI', 'GraphMAE', "MVGRL"]:
@@ -218,7 +134,7 @@ if __name__ == '__main__':
     model = load_model(config.model.model_name, config).to(device)
     print(model)
     optimizer = torch.optim.Adam(model.parameters(), lr=config.train.lr)
-    if config.model.model_name in ['MARIO', 'PROJ_GRACE']:
+    if config.model.model_name in ['MARIO']:
         params = []
         for k, v in model.named_parameters():
             if 'projector' in k or 'prototypes' in k:
@@ -234,7 +150,7 @@ if __name__ == '__main__':
     else:
         lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=config.train.mile_stones,
                                                         gamma=0.1)
-    # trainng
+    # load checkpoint if specified
     if config.model.load_checkpoint:
         load_ckpts(model, config)
 
@@ -243,18 +159,6 @@ if __name__ == '__main__':
     train_acc, id_val, id_test, ood_val, ood_test = 0, 0, 0, 0, 0
     
     train_list, id_val_list, id_test_list, ood_val_list, ood_test_list = [], [], [], [], []
-    
-    # random-init
-    train_linear_head(model, config)
-    # eval
-    train_acc, id_val, id_test, ood_val, ood_test = evaluate_all_with_scores(model, loader, criterion, config, device)
-    train_list.append(train_acc)
-    id_val_list.append(id_val)
-    id_test_list.append(id_test)
-    ood_val_list.append(ood_val)
-    ood_test_list.append(ood_test)
-    accs = [train_acc, id_val, id_test, ood_val, ood_test]
-    write_all_in_pic(current_time, config, accs, 0)
     
     if config.train.best_linear_head:
         print("Note: We will use the best linear head.")

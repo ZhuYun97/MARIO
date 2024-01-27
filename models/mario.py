@@ -14,11 +14,10 @@ class MARIO(torch.nn.Module):
         # self.encoder = GCN_Encoder(input_dim, layer_num, hidden, activation)
         # self.encoder = GAT_Encoder(input_dim, layer_num, hidden, activation)
         self.encoder = register.encoders[args_dicts['encoder_name']](input_dim, layer_num, hidden, activation, dropout, use_bn, last_activation)
-        self.projector =Two_MLP_BN(hidden, hidden, hidden)
+        self.projector = Two_MLP_BN(hidden, hidden, hidden)
         self.classifier = torch.nn.Linear(hidden, output_dim)
         self.weight = torch.nn.Parameter(torch.Tensor(hidden, hidden))
 
-        # self.classifier = GCNConv(hidden, output_dim)
         assert args_dicts['tau'] > 0 and args_dicts['num_clusters'] > 0
         self.tau = args_dicts['tau']
         self.prototypes = torch.nn.Linear(hidden, args_dicts['num_clusters'], bias=False)
@@ -36,16 +35,9 @@ class MARIO(torch.nn.Module):
             with torch.no_grad():
                 self.encoder.eval()
                 out = self.encoder(x, edge_index, edge_weight)
-                # # low-rank approximization
-                # U, S, VT = torch.linalg.svd(out.cpu())
-                # # print(S)
-                # S_low = torch.clamp(S, min=10)
-                # low_out = U@diag(S_low, shape=(U.shape[0], VT.shape[0]))@VT
-                # out = low_out.cuda()
         else:
             out = self.encoder(x, edge_index, edge_weight)
         out = self.classifier(out)
-        # out = self.classifier(out, edge_index)
         return out
     
     
@@ -79,7 +71,7 @@ class MARIO(torch.nn.Module):
                 q1 = self.sinkhorn(scores1)
                 q2 = self.sinkhorn(scores2)
             online_clus_loss = -0.5*(q1*F.log_softmax(scores2/self.tau, dim=1) + q2*F.log_softmax(scores1/self.tau, dim=1)) 
-            # + 0.1*self.constraint() # need to add orthognal loss
+            # + 0.1*self.constraint() # add orthognal loss
             online_clus_loss = torch.sum(online_clus_loss, dim=1).mean()
             
             online_clus_loss.backward()
@@ -88,7 +80,6 @@ class MARIO(torch.nn.Module):
         with torch.no_grad():
             w = self.prototypes.weight.data.clone()
             w = torch.nn.functional.normalize(w, dim=1, p=2)
-            # print("w:{}".format(w))
             self.prototypes.weight.copy_(w)
     
     def pretrain(self, x1, edge_index1, edge_weight1, x2, edge_index2, edge_weight2):    

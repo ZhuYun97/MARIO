@@ -116,7 +116,6 @@ class GOODCora(InMemoryDataset):
         self.download()
 
     def download(self):
-        # print(osp.join(self.raw_dir, self.name + '.zip'))
         # path = osp.join(self.raw_dir, self.name + '.zip')
         path = gdown.download(self.url, output=osp.join(self.raw_dir, self.name + '.zip'), fuzzy=True)
         extract_zip(path, self.raw_dir)

@@ -48,15 +48,14 @@ class BaseDataLoader(Munch):
 
         if config.model.model_level == 'node':
             graph = dataset[0]
-            # print(graph.edge_index.shape)
             train_graph = copy.deepcopy(graph)
             if config.dataset.inductive:
                 # deepcopy
                 from copy import deepcopy
                 from torch_geometric.utils import subgraph
                 from torch_geometric.data import Data
-                # print(train_graph)
-                # train_graph = deepcopy(graph)
+                
+                
                 train_idx = torch.nonzero(graph.train_mask).squeeze() # should contain validate nodes
                 
                 edge_index, _ = subgraph(train_idx, graph.edge_index, relabel_nodes=True, num_nodes=graph.x.shape[0])
@@ -66,19 +65,8 @@ class BaseDataLoader(Munch):
              
                 train_graph = Data(x=features, edge_index=edge_index, train_mask=train_mask, y=y, 
                                    env_id=graph.env_id[graph.train_mask], domain_id=graph.domain_id[graph.train_mask])
-                # train_graph = Data(x=features, edge_index=edge_index, train_mask=train_mask, y=y, 
-                #                    env_id=graph.env_id[graph.train_mask], domain=graph.domain, domain_id=graph.domain_id[graph.train_mask])
                 print("Inductive setting! Test nodes are unseen during training!")
-                # print(train_graph)
-            # if config.dataset.ood_train_set:
-            #     print("Load OOD training set!")
-            #     # reassign mask, some data from test set will be used for trainig OOD linear head
-            #     test_index = graph.test_mask.nonzero().squeeze()
-            #     selected = np.random.choice(test_index, int(0.5*graph.test_mask.sum().item()), replace=False)
-            #     graph.test_mask[selected] = 0 # replace
-            #     ood_train_mask = torch.zeros_like(graph.test_mask)
-            #     ood_train_mask[selected] = 1
-            #     graph['ood_train_mask'] = ood_train_mask.bool()   
+ 
             loader = GraphSAINTRandomWalkSampler(train_graph, batch_size=config.train.train_bs,
                                                  walk_length=config.model.model_layer,
                                                  num_steps=config.train.num_steps, sample_coverage=100,

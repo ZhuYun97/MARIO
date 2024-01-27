@@ -8,14 +8,11 @@ from .grace import GRACE
 from .gae import GAE
 from .bgrl import BGRL
 from .vgae import VGAE
-from .g2cl import G2CL
 from .dgi import DGI
 from .moco import MOCO
 from .pgcl import PGCL
-from .unp_pmlp import UNPMLP
 from .swav import SWAV
-from .mario import REGCL
-from .proj_grace import PROJ_GRACE
+from .mario import MARIO
 from .costa import COSTA
 from .graphmae import GraphMAE
 from .mvgrl import MVGRL
