@@ -6,7 +6,7 @@ Yun Zhu, Haizhou Shi, Zhenshuo Zhang, Siliang Tang†
 
 In WWW 2024
 
-Our codes are built up on [GOOD](https://github.com/divelab/GOOD).
+> Our codes are built up on [GOOD](https://github.com/divelab/GOOD).
 
 ## Overview
 ![](imgs/mario.png)
